@@ -1,43 +1,14 @@
 import os
 import re
 import StringIO
-import pipes
 import logging
 
 from fabric.api import local
 
-__all__ = [
-        'heroku_pg_create',
-        'heroku_fork',
-        'heroku_follow',
-        'heroku_pg_create_using_snapshot',
-        'heroku_pg_drop',
-        'heroku_pg_list',
-        'heroku_pg_psql',
-        'heroku_pgbackups_capture',
-        'heroku_pgbackups_restore',
-        'heroku_pgbackups_list',
-        ]
-
+from .heroku import heroku, app_name, heroku_config, heroku_config_set
 
 logger = logging.getLogger(__name__)
 
-def heroku(cmd, app=None, capture=True, stdin=None):
-    """
-    Execute heroku command
-    """
-    app = app_name(app)
-    if app:
-        # Parse command and inject app
-        parts = cmd.split(' ', 1)
-        first = parts[0]
-        rest = parts[1] if len(parts) > 1 else ""
-        cmd = "%s -a %s %s" % (first, app, rest)
-    cmd = "heroku %s" % cmd
-    if stdin:
-        stdin = pipes.quote(stdin)
-        cmd = "echo %s | %s" % (stdin, cmd)
-    return local(cmd, capture=capture)
 
 def heroku_pg_psql(db, sql, app=None):
     """
@@ -81,6 +52,7 @@ def heroku_pg_create(
         cmd += " --fork=%s" % format_db_name(fork)
     elif follow:
         cmd += " --follow=%s" % format_db_name(follow)
+    logger.info("Creating new DB")
     out = heroku(cmd, app=app)
     match = re.search('(HEROKU_POSTGRESQL_\w+)_URL', out, re.M)
     if not match:
@@ -88,14 +60,14 @@ def heroku_pg_create(
         return None
 
     newdb = match.group(1)
-    logger.info("Started creating DB: %s (this takes several minutes)" % newdb)
+    logger.info("Creating %s (this takes several minutes)" % newdb)
     heroku("pg:wait", app=app, capture=False)
     if postgis:
-        heroku_pg_add_postgis(newdb, app=app)
+        heroku_pg_enable_postgis(newdb, app=app)
     logger.info("Finished creating DB: %s" % newdb)
     return newdb
 
-def heroku_pg_add_postgis(db, app=None):
+def heroku_pg_enable_postgis(db, app=None):
     """
     Add PostGIS support to the specified DB
     """
@@ -131,14 +103,14 @@ def heroku_fork_follow(db, action='fork', app=None, plan=None, **kwargs):
 
     return heroku_pg_create(plan=plan, app=app, **kwargs)
 
-def heroku_fork(db, **kwargs):
+def heroku_pg_fork(db, **kwargs):
     """
     Fork specified DB. Keyword args passed to heroku_pg_create(). If not
     specified, plan and version will match existing DB.
     """
     return heroku_fork_follow(db, action='fork', **kwargs)
 
-def heroku_follow(db, app=None, plan=None, **kwargs):
+def heroku_pg_follow(db, app=None, plan=None, **kwargs):
     """
     Follow specified DB. Keyword args passed to heroku_pg_create(). If not
     specified, plan and version will match existing DB.
@@ -168,21 +140,24 @@ def heroku_pgbackups_restore(db, backup, app=None):
     db = format_db_name(db)
     app = app_name(app)
     confirm = " --confirm %s" % app if app else ""
-    out = heroku("pgbackups:restore %s %s%s" % (db, backup, confirm), app=app)
+    heroku("pgbackups:restore %s %s%s" % (db, backup, confirm), capture=False,
+            app=app)
 
 def heroku_pgbackups_list(app=None):
     heroku("pgbackups", app=app, capture=False)
 
 def heroku_pg_create_using_snapshot(db, app=None, **kwargs):
     """
-    Create new database using specified snapshot. Similar to heroku_fork() but
+    Create new database using specified snapshot. Similar to heroku_pg_fork()
     works on non-production-tier databases.
     """
     logger.info("Creating DB using snapshot from %s" % db)
 
     # Step 0: Get DB info and PostGIS info for existing DB
-    pg_info = heroku_pg_info(db)
-    postgis_version = heroku_pg_get_postgis_version(db)
+    pg_info = heroku_pg_info(db, app=app)
+    postgis_version = heroku_pg_get_postgis_version(db, app=app)
+    print "existing db postgis_version:", postgis_version
+    print "existing db pg_info:", pg_info
 
     # Step 1: Create new DB
     logger.info("Step 1 of 3: Create new DB")
@@ -192,7 +167,7 @@ def heroku_pg_create_using_snapshot(db, app=None, **kwargs):
     newdb = heroku_pg_create(app=app, **kwargs)
 
     # Step 2: Snapshot old DB
-    logger.info("Step 2 of 3: Creating snapshot of s" % db)
+    logger.info("Step 2 of 3: Creating snapshot of %s" % db)
     backup = heroku_pgbackups_capture(db, app=app)
 
     # Step 3: Restore snapshot to new DB
@@ -231,10 +206,3 @@ def format_db_name(db):
     if db.endswith('_URL'):
         db = db[0:-4]
     return db
-
-def app_name(app=None):
-    if not app:
-        app = os.environ.get('HEROKU_APP', None)
-    # TODO: Attempt to get app name if current directory has a single heroku
-    # app? (useful for --confirm when no app specified)
-    return app
