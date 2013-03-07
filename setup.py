@@ -18,6 +18,6 @@ setup(
         install_requires=requires,
         description="Fabric helpers for heroku-postgresql",
         long_description=open('README.md').read(),
+        packages=packages,
         package_data={'': ['LICENSE']},
-        package_dir={'fabric_heroku_postgresql': 'fabric_heroku_postgrseql'},
         )
