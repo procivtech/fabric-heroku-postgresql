@@ -36,7 +36,7 @@ def heroku_pg_get_postgis_version(db, app=None):
 def heroku_pg_create(
         app=None,
         plan='ronin',
-        version='9.1',
+        version='9.2',
         fork=None,
         follow=None,
         postgis=True,
