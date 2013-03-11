@@ -24,7 +24,7 @@ def heroku(cmd, app=None, capture=True, stdin=None):
         cmd = "echo %s | %s" % (stdin, cmd)
     return local(cmd, capture=capture)
 
-def heroku_config_all(app=None):
+def heroku_config(app=None):
     """
     heroku config. Retrieve all configuration variables.
     """
@@ -36,17 +36,6 @@ def heroku_config_all(app=None):
         k = parts[0].strip()
         v = parts[1].strip()
         config[k] = v
-    return config
-
-def heroku_config(key=None, app=None):
-    """
-    heroku config. Optional arg: key (return single value)
-    """
-    config = heroku_config_all(app=app)
-    if key:
-        val = config.get(key, None)
-        logger.info("%s=%s" % (key, val))
-        return val
     return config
 
 def heroku_config_set(key, val, app=None):
