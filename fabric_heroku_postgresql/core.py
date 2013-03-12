@@ -175,6 +175,8 @@ def heroku_pg_create_using_snapshot(db, app=None, **kwargs):
         backup, newdb))
     heroku_pgbackups_restore(newdb, backup, app=app)
 
+    return newdb
+
 def heroku_pg_info(db, app=None):
     """
     Retrieve info for specified DB
