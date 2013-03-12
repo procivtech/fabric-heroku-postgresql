@@ -9,6 +9,23 @@ from .heroku import heroku, app_name, heroku_config, heroku_config_set
 
 logger = logging.getLogger(__name__)
 
+__all__ = [
+        'heroku',
+        'heroku_config',
+        'heroku_config_set',
+        'heroku_pg_create',
+        'heroku_pg_fork',
+        'heroku_pg_follow',
+        'heroku_pg_create_using_snapshot',
+        'heroku_pg_drop',
+        'heroku_pg_list',
+        'heroku_pg_psql',
+        'heroku_pg_enable_postgis',
+        'heroku_pgbackups_capture',
+        'heroku_pgbackups_restore',
+        'heroku_pgbackups_list',
+        ]
+
 
 def heroku_pg_psql(db, sql, app=None):
     """

@@ -6,6 +6,11 @@ Fabric helpers for Heroku PostgreSQL database management.
 Usage:
 ------
 
+To start using fabric_heroku_postgresql, add a wildcard import to your
+fabfile.py:
+
+    from fabric_heroku_postgresql.core import *
+
 First, we need to specify which Heroku app we'll be dealing with. This can be
 specified via an environment variable `HEROKU_APP` or via an `app` keyword
 argument to any command:
